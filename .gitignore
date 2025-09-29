@@ -29,3 +29,4 @@ ENV/
 # result_with_red_squares.jpg
 # L_region.jpg
 # R_region.jpg
+.gitignore
