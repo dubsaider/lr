@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Project specific
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.ppm
+*.tmp
+
+# Results (uncomment if you want to ignore generated images)
+# debug_squares.jpg
+# result_with_red_squares.jpg
+# L_region.jpg
+# R_region.jpg
