@@ -1,4 +1,4 @@
-"""Medical Document Processor - автоматическое определение ориентации и извлечение областей из медицинских документов."""
+"""Medical Document Processor"""
 
 __version__ = "0.1.0"
 
@@ -15,3 +15,9 @@ __all__ = [
     'process_medical_test',
     'debug_lines',
 ]
+
+try:
+    from .generators.spiral_document_generator import SpiralDocumentGenerator, generate_sample_documents
+    __all__.extend(['SpiralDocumentGenerator', 'generate_sample_documents'])
+except ImportError as e:
+    pass

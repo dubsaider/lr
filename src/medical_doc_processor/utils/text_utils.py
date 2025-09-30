@@ -1,45 +1,115 @@
 import cv2
 import numpy as np
+from typing import Tuple, Dict
 import os
 
-def put_text_ru(image, text, position, font_scale=0.7, color=(0, 0, 255), thickness=2):
-    """Добавляет русский текст на изображение с обработкой кодировки"""
-    try:
-        # Пробуем разные шрифты
-        fonts = [
-            cv2.FONT_HERSHEY_SIMPLEX,
-            cv2.FONT_HERSHEY_COMPLEX, 
-            cv2.FONT_HERSHEY_TRIPLEX
-        ]
-        
-        for font in fonts:
-            try:
-                cv2.putText(image, text, position, font, font_scale, color, thickness)
-                return True
-            except:
-                continue
-        
-        # Если все шрифты не работают, используем английский аналог
-        eng_text = text.replace('°', 'deg').replace('?', 'sq')
-        cv2.putText(image, eng_text, position, fonts[0], font_scale, color, thickness)
-        return True
-        
-    except Exception as e:
-        print(f"Ошибка при добавлении текста: {e}")
-        return False
 
-def create_text_image(text, width=400, height=100, background_color=(255, 255, 255), text_color=(0, 0, 0)):
-    """Создает изображение с текстом (альтернативный способ)"""
-    # Создаем белое изображение
-    img = np.ones((height, width, 3), dtype=np.uint8) * background_color
+class TextRenderer:
+    """Класс для работы с текстом и шрифтами с поддержкой мультиязычности"""
     
-    # Пробуем добавить текст
-    success = put_text_ru(img, text, (10, height//2), font_scale=1, color=text_color)
+    def __init__(self, language: str = "ru"):
+        self.language = language
+        self._setup_fonts()
     
-    if not success:
-        # Если не удалось, создаем простой прямоугольник с английским текстом
-        cv2.rectangle(img, (0, 0), (width, height), (0, 0, 255), 2)
-        eng_text = "Text: " + text.encode('ascii', 'replace').decode('ascii')
-        cv2.putText(img, eng_text, (10, height//2), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 1)
+    def _setup_fonts(self):
+        """Настройка шрифтов"""
+        self.available_fonts = [cv2.FONT_HERSHEY_SIMPLEX]
     
-    return img
+    def set_language(self, language: str):
+        """Установка языка"""
+        self.language = language
+    
+    def get_text(self, key: str) -> str:
+        """Получение текста на выбранном языке"""
+        translations = {
+            "medical_test": {
+                "ru": "МЕДИЦИНСКИЙ ТЕСТ",
+                "en": "MEDICAL TEST"
+            },
+            "probe": {
+                "ru": "Проба",
+                "en": "Probe"
+            },
+            "date": {
+                "ru": "Дата",
+                "en": "Date"
+            },
+            "exercise": {
+                "ru": "Упражнение",
+                "en": "Exercise"
+            },
+            "archimedes_spirals": {
+                "ru": "Спирали Архимеда",
+                "en": "Archimedes Spirals"
+            },
+            "archimedes_spirals_test": {
+                "ru": "Тест спиралей Архимеда",
+                "en": "Archimedes Spirals Test"
+            },
+            "time": {
+                "ru": "Время",
+                "en": "Time"
+            },
+            "sec": {
+                "ru": "сек",
+                "en": "sec"
+            },
+            "instructions": {
+                "ru": "ИНСТРУКЦИЯ:",
+                "en": "INSTRUCTIONS:"
+            },
+            "instruction_1": {
+                "ru": "1. Нарисуйте спираль, используя ручку синего цвета.",
+                "en": "1. Draw the spiral using a blue pen."
+            },
+            "instruction_2": {
+                "ru": "2. Начните рисование из центра шаблона, двигая ручку по его контуру.",
+                "en": "2. Start drawing from the center of the template, moving the pen along its contour."
+            },
+            "instruction_3": {
+                "ru": "3. Выполните упражнение левой и правой рукой, соответственно шаблонам L и R.",
+                "en": "3. Perform the exercise with left and right hands, according to L and R templates."
+            },
+            "instruction_4": {
+                "ru": "4. Измерьте время рисования фигуры в секундах, используя секундомер.",
+                "en": "4. Measure the drawing time in seconds using a stopwatch."
+            },
+            "instruction_5": {
+                "ru": "5. Результат измерения запишите в соответствующее поле на шаблоне.",
+                "en": "5. Record the measurement result in the corresponding field on the template."
+            },
+            "left": {
+                "ru": "L",
+                "en": "L"
+            },
+            "right": {
+                "ru": "R",
+                "en": "R"
+            },
+            "time_left": {
+                "ru": "Время L",
+                "en": "Time L"
+            },
+            "time_right": {
+                "ru": "Время R",
+                "en": "Time R"
+            }
+        }
+        
+        return translations.get(key, {}).get(self.language, key)
+    
+    def put_text(self, img: np.ndarray, text: str, position: Tuple[int, int], 
+                 font_scale: float = 1.0, color: Tuple[int, int, int] = (0, 0, 0), 
+                 thickness: int = 2):
+        """Функция для отображения текста"""
+        try:
+            cv2.putText(img, text, position, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
+        except Exception as e:
+            # Если есть проблемы с отображением, пробуем английскую версию
+            try:
+                safe_text = text.encode('ascii', 'ignore').decode('ascii')
+                if not safe_text:
+                    safe_text = "TEXT"
+                cv2.putText(img, safe_text, position, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
+            except Exception as e2:
+                cv2.putText(img, "TEXT", position, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
