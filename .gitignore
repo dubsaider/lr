@@ -33,3 +33,6 @@ build/
 # L_region.jpg
 # R_region.jpg
 .gitignore
+
+tests/generated/
+tests/output/
