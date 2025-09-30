@@ -13,12 +13,12 @@
 
 ### Из репозитория GitHub
 ```bash
-pip install git+https://github.com/constantintesla/lr.git
+pip install git+https://github.com/dubsaider/lr.git
 ```
 
 ### Для разработки
 ```bash
-git clone https://github.com/constantintesla/lr.git
+git clone https://github.com/dubsaider/lr.git
 cd lr
 pip install -e ".[dev]"
 ```
