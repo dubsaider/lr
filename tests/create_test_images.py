@@ -22,7 +22,7 @@ def create_test_images():
     if original_image is None:
         raise ValueError(f"Не удалось загрузить изображение: {source_path}")
     
-    print(f"✅ Исходное изображение загружено: {original_image.shape}")
+    print(f"[OK] Исходное изображение загружено: {original_image.shape}")
     
     # Создаем изображения в разных ориентациях
     images = {
@@ -36,9 +36,9 @@ def create_test_images():
     for filename, image in images.items():
         output_path = os.path.join(generated_dir, filename)
         cv2.imwrite(output_path, image)
-        print(f"✅ Создано: {output_path} ({image.shape})")
+        print(f"[OK] Создано: {output_path} ({image.shape})")
     
-    print(f"\n🎯 Создано {len(images)} тестовых изображения в tests/generated/")
+    print(f"\n[INFO] Создано {len(images)} тестовых изображения в tests/generated/")
     
     return images
 
@@ -54,10 +54,10 @@ def verify_test_images():
             missing_files.append(filename)
     
     if missing_files:
-        print(f"❌ Отсутствуют файлы: {missing_files}")
+        print(f"[MISS] Отсутствуют файлы: {missing_files}")
         return False
     else:
-        print("✅ Все тестовые изображения созданы корректно")
+        print("[OK] Все тестовые изображения созданы корректно")
         return True
 
 if __name__ == '__main__':
@@ -65,4 +65,4 @@ if __name__ == '__main__':
         create_test_images()
         verify_test_images()
     except Exception as e:
-        print(f"❌ Ошибка: {e}")
+        print(f"[ERR] Ошибка: {e}")

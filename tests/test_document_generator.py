@@ -33,20 +33,6 @@ class TestDocumentGenerator:
         assert img.shape == (1600, 1200, 3)
         
         print(f"✅ Документ сгенерирован: {result_path}")
-    
-    def test_sample_documents(self):
-        """Тест генерации набора документов"""
-        from medical_doc_processor.generators import generate_sample_documents
-        
-        documents = generate_sample_documents('tests/output/generated_samples')
-        
-        assert len(documents) >= 1
-        for doc_path in documents:
-            assert os.path.exists(doc_path)
-            img = cv2.imread(doc_path)
-            assert img is not None
-        
-        print(f"✅ Создано {len(documents)} тестовых документов")
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '-s'])

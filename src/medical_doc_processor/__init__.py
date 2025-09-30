@@ -17,7 +17,7 @@ __all__ = [
 ]
 
 try:
-    from .generators.spiral_document_generator import SpiralDocumentGenerator, generate_sample_documents
-    __all__.extend(['SpiralDocumentGenerator', 'generate_sample_documents'])
+    from .generators.spiral_document_generator import SpiralDocumentGenerator
+    __all__.extend(['SpiralDocumentGenerator'])
 except ImportError as e:
     pass

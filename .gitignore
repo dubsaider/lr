@@ -9,6 +9,7 @@ venv/
 ENV/
 .venv
 build/
+dist/
 *.egg-info/
 .eggs/
 
@@ -19,12 +20,7 @@ build/
 *.swo
 *~
 
-# Project specific
-*.pdf
-*.jpg
-*.jpeg
-*.png
-*.ppm
+# Project specific (keep sources tracked; generated assets ignored below)
 *.tmp
 
 # Results (uncomment if you want to ignore generated images)
@@ -36,3 +32,4 @@ build/
 
 tests/generated/
 tests/output/
+/generated_documents/

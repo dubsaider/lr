@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from typing import Tuple, Dict
 import os
+from PIL import Image, ImageDraw, ImageFont
 
 
 class TextRenderer:
@@ -12,8 +13,35 @@ class TextRenderer:
         self._setup_fonts()
     
     def _setup_fonts(self):
-        """Настройка шрифтов"""
+        """Настройка шрифтов: ищем системный TTF с поддержкой кириллицы."""
         self.available_fonts = [cv2.FONT_HERSHEY_SIMPLEX]
+        self.ttf_font_path = self._find_font_path()
+        self._font_cache: Dict[float, ImageFont.FreeTypeFont] = {}
+
+    def _find_font_path(self) -> str:
+        """Находит путь к TTF-шрифту с поддержкой кириллицы.
+        Возвращает пустую строку если не найдено (будет fallback).
+        """
+        candidates = []
+        # Windows стандартные шрифты
+        win_fonts = [
+            r"C:\\Windows\\Fonts\\arial.ttf",
+            r"C:\\Windows\\Fonts\\ARIAL.TTF",
+            r"C:\\Windows\\Fonts\\segoeui.ttf",
+            r"C:\\Windows\\Fonts\\Calibri.ttf",
+            r"C:\\Windows\\Fonts\\tahoma.ttf",
+        ]
+        candidates.extend(win_fonts)
+        # Популярные кроссплатформенные
+        candidates.extend([
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+            "/Library/Fonts/Arial.ttf",
+        ])
+        for path in candidates:
+            if os.path.exists(path):
+                return path
+        return ""
     
     def set_language(self, language: str):
         """Установка языка"""
@@ -42,10 +70,6 @@ class TextRenderer:
                 "ru": "Спирали Архимеда",
                 "en": "Archimedes Spirals"
             },
-            "archimedes_spirals_test": {
-                "ru": "Тест спиралей Архимеда",
-                "en": "Archimedes Spirals Test"
-            },
             "time": {
                 "ru": "Время",
                 "en": "Time"
@@ -59,31 +83,31 @@ class TextRenderer:
                 "en": "INSTRUCTIONS:"
             },
             "instruction_1": {
-                "ru": "1. Нарисуйте спираль, используя ручку синего цвета.",
-                "en": "1. Draw the spiral using a blue pen."
+                "ru": "1. Возьмите синюю ручку.",
+                "en": "1. Use a blue pen."
             },
             "instruction_2": {
-                "ru": "2. Начните рисование из центра шаблона, двигая ручку по его контуру.",
-                "en": "2. Start drawing from the center of the template, moving the pen along its contour."
+                "ru": "2. Начните из центра и ведите по контуру, не отрываясь.",
+                "en": "2. Start from the center and follow the contour without lifting."
             },
             "instruction_3": {
-                "ru": "3. Выполните упражнение левой и правой рукой, соответственно шаблонам L и R.",
-                "en": "3. Perform the exercise with left and right hands, according to L and R templates."
+                "ru": "3. Сначала выполните шаблон Л, затем шаблон П.",
+                "en": "3. Complete the L template first, then the R template."
             },
             "instruction_4": {
-                "ru": "4. Измерьте время рисования фигуры в секундах, используя секундомер.",
-                "en": "4. Measure the drawing time in seconds using a stopwatch."
+                "ru": "4. Для каждого шаблона измерьте время в секундах.",
+                "en": "4. For each template, measure drawing time in seconds."
             },
             "instruction_5": {
-                "ru": "5. Результат измерения запишите в соответствующее поле на шаблоне.",
-                "en": "5. Record the measurement result in the corresponding field on the template."
+                "ru": "5. Запишите значения в поля \"Время Л\" и \"Время П\".",
+                "en": "5. Enter the values in the \"Time L\" and \"Time R\" fields."
             },
             "left": {
-                "ru": "L",
+                "ru": "Л",
                 "en": "L"
             },
             "right": {
-                "ru": "R",
+                "ru": "П",
                 "en": "R"
             },
             "time_left": {
@@ -101,15 +125,45 @@ class TextRenderer:
     def put_text(self, img: np.ndarray, text: str, position: Tuple[int, int], 
                  font_scale: float = 1.0, color: Tuple[int, int, int] = (0, 0, 0), 
                  thickness: int = 2):
-        """Функция для отображения текста"""
+        """Отрисовывает текст с поддержкой кириллицы через PIL, с fallback на OpenCV.
+        position — левый нижний угол (как у cv2.putText).
+        """
+        if not isinstance(img, np.ndarray) or img.ndim != 3:
+            return
+
+        # Если найден TTF-шрифт, используем PIL
+        if self.ttf_font_path:
+            try:
+                # Приблизим cv2 font_scale к пикселям (эмпирически ~32 px на 1.0)
+                px = max(10, int(32 * font_scale))
+                font = self._font_cache.get(px)
+                if font is None:
+                    font = ImageFont.truetype(self.ttf_font_path, px)
+                    self._font_cache[px] = font
+
+                # cv2 в BGR; PIL ожидает RGB
+                image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                pil_img = Image.fromarray(image_rgb)
+                draw = ImageDraw.Draw(pil_img)
+
+                # У PIL координата — по верхней левой точке. Преобразуем из baseline.
+                # Оценим высоту текста для смещения вверх.
+                ascent, descent = font.getmetrics()
+                text_y_top = position[1] - ascent
+
+                draw.text((position[0], text_y_top), text, font=font,
+                          fill=(int(color[2]), int(color[1]), int(color[0])),
+                          stroke_width=max(0, thickness - 1), stroke_fill=(int(color[2]), int(color[1]), int(color[0])))
+
+                # Обратно в OpenCV
+                img[:, :, :] = cv2.cvtColor(np.asarray(pil_img), cv2.COLOR_RGB2BGR)
+                return
+            except Exception:
+                pass
+
+        # Fallback: OpenCV (ASCII)
         try:
             cv2.putText(img, text, position, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
-        except Exception as e:
-            # Если есть проблемы с отображением, пробуем английскую версию
-            try:
-                safe_text = text.encode('ascii', 'ignore').decode('ascii')
-                if not safe_text:
-                    safe_text = "TEXT"
-                cv2.putText(img, safe_text, position, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
-            except Exception as e2:
-                cv2.putText(img, "TEXT", position, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
+        except Exception:
+            safe_text = text.encode('ascii', 'ignore').decode('ascii') or "TEXT"
+            cv2.putText(img, safe_text, position, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)

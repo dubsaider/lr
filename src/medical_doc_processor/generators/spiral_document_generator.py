@@ -1,3 +1,4 @@
+# generators/spiral_document_generator.py
 import os
 import cv2
 import numpy as np
@@ -10,20 +11,20 @@ from ..components.document_components import DocumentComponents
 
 
 class SpiralDocumentGenerator:
-    """Генератор медицинских документов со спиралями Архимеда в альбомной ориентации"""
+    """Генератор медицинских документов со спиралями Архимеда"""
     
     def __init__(self, width: int = 2339, height: int = 1654, language: str = "ru"):
         self.width = width
         self.height = height
-        self.margin = 35
-        # Адаптивный размер квадрата - 70% от ширины документа для двух квадратов
+        self.margin = 50
+        # Базовый размер; позже может быть уменьшен под доступную высоту
         self.square_size = int((width - 3 * self.margin) / 2 * 0.9)
-        self.marker_size = 27
+        self.marker_size = max(20, int(0.025 * self.square_size))
         self.language = language
         
-        # Инициализация компонентов
         self.spiral_generator = SpiralGenerator(self.square_size)
         self.components = DocumentComponents(width, height, self.margin, self.square_size, self.marker_size, language)
+        self._top_y = int(self.height * 0.15)
     
     def set_language(self, language: str):
         """Установка языка"""
@@ -31,13 +32,10 @@ class SpiralDocumentGenerator:
         self.components.set_language(language)
     
     def _calculate_positions(self) -> List[Tuple[Tuple[int, int], str]]:
-        """Вычисляет позиции для двух спиралей с адаптивным расположением"""
+        """Вычисляет позиции для двух спиралей"""
         squares = []
+        y = self._top_y
         
-        # Адаптивная позиция по вертикали - 20% от высоты документа
-        y = int(self.height * 0.15)
-        
-        # Центрируем квадраты с равными отступами
         total_width_needed = 2 * self.square_size + self.margin
         start_x = (self.width - total_width_needed) // 2
         
@@ -53,11 +51,10 @@ class SpiralDocumentGenerator:
                          probe_number: str = "1",
                          exercise: str = None,
                          times: Dict[str, str] = None) -> str:
-        """Генерирует документ со спиралями в альбомной ориентации"""
-        if times is None:
-            times = {}
+        """Генерирует документ со спиралями"""
         
-        # Устанавливаем упражнение по умолчанию в зависимости от языка
+        times = {}
+        
         if exercise is None:
             if self.language == "en":
                 exercise = "Archimedes Spirals"
@@ -66,9 +63,31 @@ class SpiralDocumentGenerator:
         
         img = np.ones((self.height, self.width, 3), dtype=np.uint8) * 255
         
-        # Рисуем компактную шапку
+        # Динамически рассчитываем верхнюю границу и допустимый размер квадратов,
+        # чтобы исключить пересечения с блоками времени и инструкциями
+        base_scale = self.height / 1654.0
+        header_h = int(100 * base_scale)  # высота шапки
+        time_h = 110                      # высота блока времени из components
+        instructions_h = int(220 * base_scale)
+        bottom_reserved = time_h + 30 + instructions_h + self.margin
+        self._top_y = self.margin + header_h
+        max_square_by_height = self.height - self._top_y - bottom_reserved
+        max_square_by_width = int((self.width - 3 * self.margin) / 2)
+        new_square = min(self.square_size, max_square_by_height, max_square_by_width)
+        # Обновляем размеры, если уменьшили
+        if new_square <= 0:
+            new_square = max_square_by_width
+        if new_square != self.square_size:
+            self.square_size = new_square
+            self.marker_size = max(18, int(0.025 * self.square_size))
+            self.spiral_generator.square_size = self.square_size
+            self.components.square_size = self.square_size
+            self.components.marker_size = self.marker_size
+        
+        # Шапка
         self.components.draw_header(img, probe_number, exercise)
         
+        # Квадраты со спиралями
         squares_layout = self._calculate_positions()
         
         for position, side in squares_layout:
@@ -80,51 +99,13 @@ class SpiralDocumentGenerator:
                 spiral_points = self.spiral_generator.generate_right_spiral(position)
             
             self.spiral_generator.draw_spiral(img, spiral_points)
-            
-            time_key = f"{side.lower()}_time"
-            time_value = times.get(time_key, "")
-            self.components.draw_time_field(img, position, side, time_value)
         
-        # Проверяем, что инструкции не пересекаются с квадратами
-        max_square_bottom = max([pos[1] + self.square_size + 200 for pos, _ in squares_layout])
-        if max_square_bottom > self.height * 0.7:
-            print(f"⚠️ Внимание: Высота документа может быть недостаточной для инструкций")
+        # Блоки времени и нижняя граница
+        last_y = self.components.draw_time_fields_side_by_side(img, squares_layout, times)
         
-        self.components.draw_instructions(img)
+        # Инструкции под блоками времени без наложения
+        self.components.draw_compact_instructions(img, last_y + 30)
         
         cv2.imwrite(output_path, img, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        print(f"✅ Документ создан ({self.language}, {self.width}x{self.height}px): {output_path}")
+        print(f"[OK] Документ создан ({self.language}): {output_path}")
         return output_path
-
-
-def generate_sample_documents(output_dir: str = "generated_documents_landscape", language: str = "ru") -> List[str]:
-    """Генерирует набор тестовых документов в альбомной ориентации"""
-    os.makedirs(output_dir, exist_ok=True)
-    generator = SpiralDocumentGenerator(language=language)
-    
-    documents = []
-    
-    # Основной документ
-    if language == "en":
-        exercise = "Archimedes Spirals Test"
-    else:
-        exercise = "Тест спиралей Архимеда"
-    
-    main_doc = generator.generate_document(
-        os.path.join(output_dir, f"spiral_document_{language}.jpg"),
-        probe_number="1",
-        exercise=exercise
-    )
-    documents.append(main_doc)
-    
-    # Документ с временем
-    doc_with_time = generator.generate_document(
-        os.path.join(output_dir, f"spiral_document_with_time_{language}.jpg"),
-        probe_number="2", 
-        exercise=exercise,
-        times={"l_time": "45", "r_time": "52"}
-    )
-    documents.append(doc_with_time)
-    
-    print(f"✅ Создано {len(documents)} тестовых документов ({language}) в {output_dir}/")
-    return documents

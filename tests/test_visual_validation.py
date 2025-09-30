@@ -27,7 +27,7 @@ def create_visual_test_report():
     
     os.makedirs('tests/output/visual_report', exist_ok=True)
     
-    print("🎨 Creating visual report...")
+    print("[INFO] Creating visual report...")
     
     for filename, description in test_cases:
         try:
@@ -62,12 +62,12 @@ def create_visual_test_report():
             # Сохраняем
             output_path = os.path.join('tests/output/visual_report', filename)
             cv2.imwrite(output_path, vis_image)
-            print(f"✅ Created: {output_path}")
+            print(f"[OK] Created: {output_path}")
             
         except Exception as e:
-            print(f"❌ Error processing {filename}: {e}")
+            print(f"[ERR] Error processing {filename}: {e}")
     
-    print("📊 Visual report created in tests/output/visual_report/")
+    print("[INFO] Visual report created in tests/output/visual_report/")
 
 def create_simple_text_image():
     """Создает тестовое изображение с текстом для проверки кодировки"""
@@ -86,16 +86,16 @@ def create_simple_text_image():
         y_position = 30 + i * 40
         try:
             cv2.putText(img, text, (10, y_position), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
-            print(f"✅ Text added: {text}")
+            print(f"[OK] Text added: {text}")
         except Exception as e:
             safe_text = text.encode('ascii', 'replace').decode('ascii')
             cv2.putText(img, safe_text, (10, y_position), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
-            print(f"⚠️ Used safe text: {safe_text} (original: {text})")
+            print(f"[WARN] Used safe text: {safe_text} (original: {text})")
     
     # Сохраняем
     os.makedirs('tests/output', exist_ok=True)
     cv2.imwrite('tests/output/text_encoding_test.jpg', img)
-    print("✅ Text encoding test saved: tests/output/text_encoding_test.jpg")
+    print("[OK] Text encoding test saved: tests/output/text_encoding_test.jpg")
 
 if __name__ == '__main__':
     create_simple_text_image()

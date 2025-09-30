@@ -28,13 +28,13 @@ pip install -e ".[dev]"
 ### Через CLI
 ```bash
 # Обработать один файл
-lr-processor process document.pdf
+medical-doc-processor process document.pdf
 
 # С отладочной информацией
-lr-processor process scan.jpg --debug --output-dir results
+medical-doc-processor process scan.jpg --debug --output-dir results
 
 # Обработать все файлы в папке
-lr-processor batch ./scans --recursive
+medical-doc-processor batch ./scans --recursive
 ```
 
 ### Через Python
@@ -52,27 +52,27 @@ debug_lines("document.pdf", output_dir="debug")
 
 ### Обработка одного файла
 ```bash
-lr-processor process input.pdf --output-dir results --debug
+medical-doc-processor process input.pdf --output-dir results --debug
 ```
 
 ### Пакетная обработка
 ```bash
-lr-processor batch ./input_scans --recursive --output-dir ./output
+medical-doc-processor batch ./input_scans --recursive --output-dir ./output
 ```
 
 ### Отладочная информация
 ```bash
-lr-processor debug document.pdf
+medical-doc-processor debug document.pdf
 ```
 
 ### Проверка файла
 ```bash
-lr-processor validate image.png
+medical-doc-processor validate image.png
 ```
 
 ### Информация о форматах
 ```bash
-lr-processor info
+medical-doc-processor info
 ```
 
 ## Тестирование
@@ -107,10 +107,7 @@ tests/
    python tests/create_test_images.py
    ```
 
-3. **Запустите подготовку тестов:**
-   ```bash
-   python tests/prepare_tests.py
-   ```
+3. Пропустите шаги подготовки, визуальные артефакты генерируются на лету тестами.
 
 ### Запуск тестов
 
@@ -124,15 +121,6 @@ python tests/run_tests.py
 ```bash
 # Основные тесты ориентации
 python -m pytest tests/test_orientation_detector.py -v
-
-# Отладка детекции квадратов
-python tests/debug_tests.py
-
-# Визуальная проверка (английский текст)
-python tests/simple_visual_test.py
-
-# Минимальная визуализация (без текста)
-python tests/minimal_visual.py
 ```
 
 #### Создание визуальных отчетов

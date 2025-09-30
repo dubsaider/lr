@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 def main():
-    print("🧪 ЗАПУСК ТЕСТОВ С REAL DOCUMENT")
+    print("[TEST] ЗАПУСК ТЕСТОВ С REAL DOCUMENT")
     print("=" * 50)
     
     # 1. Проверяем исходный файл
@@ -37,7 +37,7 @@ def main():
     all_passed = True
     for test_file in test_files:
         if os.path.exists(test_file):
-            print(f"\n📋 Запуск {os.path.basename(test_file)}...")
+            print(f"\n[RUN] Запуск {os.path.basename(test_file)}...")
             result = subprocess.run([
                 sys.executable, '-m', 'pytest', test_file, '-v', '--tb=short'
             ], capture_output=True, text=True)
@@ -61,10 +61,10 @@ def main():
     # 5. Итоги
     print("\n" + "=" * 50)
     if all_passed:
-        print("✅ ВСЕ ТЕСТЫ ПРОЙДЕНЫ!")
-        print("📁 Результаты в tests/output/")
+        print("[OK] ВСЕ ТЕСТЫ ПРОЙДЕНЫ!")
+        print("[INFO] Результаты в tests/output/")
     else:
-        print("❌ НЕКОТОРЫЕ ТЕСТЫ ПРОВАЛЕНЫ")
+        print("[FAIL] НЕКОТОРЫЕ ТЕСТЫ ПРОВАЛЕНЫ")
     
     return all_passed
 
