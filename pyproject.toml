@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medical-doc-processor"
+version = "0.1.0"
+description = "Medical document processor for automatic orientation detection and region extraction"
+authors = [
+    {name = "Constantin Tesla", email = "constantin.tesla@example.com"},
+]
+readme = "README.md"
+license = {text = "MIT"}
+keywords = ["medical", "document", "processing", "orientation", "detection"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Healthcare Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9", 
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "opencv-python>=4.5.0",
+    "numpy>=1.21.0",
+    "Pillow>=9.0.0",
+    "click>=8.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0",
+    "black",
+    "flake8",
+]
+
+[project.scripts]
+medical-doc-processor = "medical_doc_processor.cli:main"
+lr-processor = "medical_doc_processor.cli:main"
