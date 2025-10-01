@@ -8,10 +8,10 @@ import numpy.typing as npt
 class SquareDetector:
     """Детектор черных квадратов на изображениях."""
     
-    def __init__(self, sensitivity: int = 30, min_area: int = 50, max_area: int = 5000):
+    def __init__(self, sensitivity: int = 70, min_area: int = 50, max_area: int = 5000):
         """
         Args:
-            sensitivity: Порог бинаризации (0-255)
+            sensitivity: Порог бинаризации (0-255). По умолчанию 70 для надежной детекции всех маркеров
             min_area: Минимальная площадь квадрата
             max_area: Максимальная площадь квадрата
         """
