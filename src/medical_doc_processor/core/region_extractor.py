@@ -12,8 +12,9 @@ from .orientation_detector import OrientationDetector
 class RegionExtractor:
     """Извлекает области L и R из медицинских документов."""
     
-    def __init__(self, output_dir: str = "output"):
+    def __init__(self, output_dir: str = "output", template_alpha: float = 0.4):
         self.output_dir = output_dir
+        self.template_alpha = template_alpha
         self.image_loader = ImageLoader()
         self.square_detector = SquareDetector()
         self.orientation_detector = OrientationDetector()
@@ -73,6 +74,18 @@ class RegionExtractor:
             rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
             return cv2.warpAffine(image, rotation_matrix, (width, height))
     
+    def _apply_template_transparency(self, region: np.ndarray, alpha: float = 0.2) -> np.ndarray:
+        """Применяет прозрачность к эталонной спирали в области"""
+        # Находим светлые области (эталонная спираль)
+        gray = cv2.cvtColor(region, cv2.COLOR_BGR2GRAY)
+        _, light_mask = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
+        
+        # Применяем прозрачность к светлым областям
+        result = region.copy()
+        result[light_mask > 0] = result[light_mask > 0] * alpha + 255 * (1 - alpha)
+        
+        return result
+    
     def _extract_regions(self, image: npt.NDArray, file_name: str) -> dict:
         """Извлекает L и R области из изображения."""
         squares = self.square_detector.find_black_squares(image)
@@ -88,24 +101,30 @@ class RegionExtractor:
             l_bbox = self._create_region_from_points(l_squares)
             if l_bbox:
                 results['L_bbox'] = l_bbox
-                results['L_region'] = image[l_bbox[1]:l_bbox[3], l_bbox[0]:l_bbox[2]]
+                l_region = image[l_bbox[1]:l_bbox[3], l_bbox[0]:l_bbox[2]]
+                # Применяем прозрачность к эталонной спирали
+                l_region = self._apply_template_transparency(l_region, alpha=self.template_alpha)
+                results['L_region'] = l_region
                 cv2.imwrite(
                     os.path.join(self.output_dir, f'{file_name}_L_region.jpg'),
-                    results['L_region']
+                    l_region
                 )
-                print(f"L область сохранена: {l_bbox}")
+                print(f"L область сохранена с прозрачностью: {l_bbox}")
         
         # Обрабатываем R область
         if len(r_squares) >= 3:
             r_bbox = self._create_region_from_points(r_squares)
             if r_bbox:
                 results['R_bbox'] = r_bbox
-                results['R_region'] = image[r_bbox[1]:r_bbox[3], r_bbox[0]:r_bbox[2]]
+                r_region = image[r_bbox[1]:r_bbox[3], r_bbox[0]:r_bbox[2]]
+                # Применяем прозрачность к эталонной спирали
+                r_region = self._apply_template_transparency(r_region, alpha=self.template_alpha)
+                results['R_region'] = r_region
                 cv2.imwrite(
                     os.path.join(self.output_dir, f'{file_name}_R_region.jpg'),
-                    results['R_region']
+                    r_region
                 )
-                print(f"R область сохранена: {r_bbox}")
+                print(f"R область сохранена с прозрачностью: {r_bbox}")
         
         return results
     

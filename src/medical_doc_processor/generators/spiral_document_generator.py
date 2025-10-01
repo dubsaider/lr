@@ -99,7 +99,7 @@ class SpiralDocumentGenerator:
             else:
                 spiral_points = self.spiral_generator.generate_right_spiral(position)
             
-            self.spiral_generator.draw_spiral(img, spiral_points)
+            img = self.spiral_generator.draw_spiral(img, spiral_points)
         
         # Квадратики Л и П под спиралями и блок времени
         last_y = self.components.draw_time_fields_side_by_side(img, squares_layout, times)
