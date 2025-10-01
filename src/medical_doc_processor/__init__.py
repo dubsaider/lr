@@ -1,6 +1,6 @@
 """Medical Document Processor"""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from .core.image_loader import load_image
 from .core.square_detector import find_black_squares
