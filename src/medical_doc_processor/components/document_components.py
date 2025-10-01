@@ -34,10 +34,9 @@ class DocumentComponents:
         current_date = datetime.now().strftime("%d.%m.%Y")
         
         header_text = (
-            f"{self.text_renderer.get_text('medical_test')} | "
+            f"{exercise} | "
             f"{self.text_renderer.get_text('probe')} {probe_number} | "
-            f"{self.text_renderer.get_text('date')}: {current_date} | "
-            f"{self.text_renderer.get_text('exercise')}: {exercise}"
+            f"{current_date}"
         )
         
         base_font_scale = self.height / 1400
@@ -77,52 +76,49 @@ class DocumentComponents:
                          (0, 0, 0), -1)
     
     def draw_time_fields_side_by_side(self, img: np.ndarray, squares_layout: List[Tuple[Tuple[int, int], str]], times: Dict[str, str]):
-        """Рисует два блока времени рядом под квадратами и возвращает нижнюю границу (y)."""
+        """Рисует строки для записи времени под спиралями (Время Л ___ сек)"""
         if len(squares_layout) < 2:
             return
             
         # Получаем позиции квадратов
         (left_pos, _), (right_pos, _) = squares_layout
         
-        # Параметры блоков времени
-        block_height = 110
-        block_width = self.square_size
-        block_y = left_pos[1] + self.square_size + 40
-        
         base_font_scale = self.height / 1400
         
-        left_x = left_pos[0]
-        time_text = self.text_renderer.get_text('time')
-        left_text = self.text_renderer.get_text('left')
-        sec_text = self.text_renderer.get_text('sec')
-        fs = 1.2 * base_font_scale
-        baseline_y = block_y + 60
-        # Подберем количество подчёркиваний, чтобы строка уместилась в ширину квадрата
-        prefix = f"{time_text} {left_text} "
-        # начальная длина подчёркиваний
-        underscores = 20
-        while underscores > 4:
-            line = prefix + ("_" * underscores) + f" {sec_text}"
-            (w, h), _ = cv2.getTextSize(line, cv2.FONT_HERSHEY_SIMPLEX, fs, 2)
-            if w <= int(self.square_size * 0.95):
-                break
-            underscores -= 1
-        self._put_text(img, line, (left_x, baseline_y), font_scale=fs, color=(0, 0, 0), thickness=2)
+        # Позиция под квадратами со спиралями
+        below_y = left_pos[1] + self.square_size + 40
         
-
-        right_x = right_pos[0]
-        right_text = self.text_renderer.get_text('right')
-        prefix_r = f"{time_text} {right_text} "
-        underscores = 20
-        while underscores > 4:
-            line_r = prefix_r + ("_" * underscores) + f" {sec_text}"
-            (w, h), _ = cv2.getTextSize(line_r, cv2.FONT_HERSHEY_SIMPLEX, fs, 2)
-            if w <= int(self.square_size * 0.95):
-                break
-            underscores -= 1
-        self._put_text(img, line_r, (right_x, baseline_y), font_scale=fs, color=(0, 0, 0), thickness=2)
-        # Возвращаем нижнюю границу области времени
-        return baseline_y + 30
+        # ЛЕВЫЙ БЛОК (Время Л ___________ сек)
+        # Центр левой спирали
+        left_center_x = left_pos[0] + self.square_size // 2
+        
+        # Формируем текст
+        time_left_text = f"{self.text_renderer.get_text('time')} {self.text_renderer.get_text('left')} ___________ {self.text_renderer.get_text('sec')}"
+        
+        # Вычисляем ширину текста для центрирования
+        (text_w, text_h), _ = cv2.getTextSize(time_left_text, cv2.FONT_HERSHEY_SIMPLEX, 0.8 * base_font_scale, 2)
+        left_text_x = left_center_x - text_w // 2
+        
+        self._put_text(img, time_left_text, (left_text_x, below_y + 30), 
+                      font_scale=0.8 * base_font_scale, color=(0, 0, 0), thickness=2)
+        
+        # ПРАВЫЙ БЛОК (Время П ___________ сек)
+        # Центр правой спирали
+        right_center_x = right_pos[0] + self.square_size // 2
+        
+        # Формируем текст
+        time_right_text = f"{self.text_renderer.get_text('time')} {self.text_renderer.get_text('right')} ___________ {self.text_renderer.get_text('sec')}"
+        
+        # Вычисляем ширину текста для центрирования
+        (text_w, text_h), _ = cv2.getTextSize(time_right_text, cv2.FONT_HERSHEY_SIMPLEX, 0.8 * base_font_scale, 2)
+        right_text_x = right_center_x - text_w // 2
+        
+        self._put_text(img, time_right_text, (right_text_x, below_y + 30), 
+                      font_scale=0.8 * base_font_scale, color=(0, 0, 0), thickness=2)
+        
+        # Возвращаем нижнюю границу
+        return below_y + 50
+    
     
     def draw_compact_instructions(self, img: np.ndarray, start_y: int):
         """Рисует компактные инструкции. Заголовок начинается ПОД линией."""
@@ -142,16 +138,17 @@ class DocumentComponents:
                 (self.width - self.margin, line_y), (0, 0, 0), 2)
         
         # Заголовок инструкций — чуть ниже линии
-        title_offset = int(60 * base_font_scale)
+        title_offset = int(50 * base_font_scale)
         title_y = line_y + title_offset
+        
         instructions_title = self.text_renderer.get_text("instructions")
         self._put_text(img, instructions_title, 
                       (self.margin, title_y),
-                      font_scale=1.5 * base_font_scale, color=(0, 0, 0), thickness=3)
+                      font_scale=1.3 * base_font_scale, color=(0, 0, 0), thickness=3)
         
         # Инструкции — две колонки (1-3 слева, 4-5 справа)
-        start_list_y = title_y + int(68 * base_font_scale)
-        line_step = int(48 * base_font_scale)
+        start_list_y = title_y + int(55 * base_font_scale)
+        line_step = int(42 * base_font_scale)  # уменьшенный интервал между строками
         col_width = (self.width - 3 * self.margin) // 2
         col1_x = self.margin
         col2_x = self.margin + col_width + self.margin
@@ -159,11 +156,13 @@ class DocumentComponents:
         col1 = instructions[:3]
         col2 = instructions[3:]
 
+        # Рисуем все инструкции без проверки (они должны поместиться)
         for i, instruction in enumerate(col1):
             y_pos = start_list_y + i * line_step
             self._put_text(img, instruction, (col1_x, y_pos),
-                          font_scale=1.0 * base_font_scale, color=(0, 0, 0), thickness=2)
+                          font_scale=0.85 * base_font_scale, color=(0, 0, 0), thickness=2)
+        
         for i, instruction in enumerate(col2):
             y_pos = start_list_y + i * line_step
             self._put_text(img, instruction, (col2_x, y_pos),
-                          font_scale=1.0 * base_font_scale, color=(0, 0, 0), thickness=2)
+                          font_scale=0.85 * base_font_scale, color=(0, 0, 0), thickness=2)

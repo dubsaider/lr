@@ -152,7 +152,7 @@ def generate(output_dir: str, count: int, width: int, height: int,
              language: str, dpi: int):
     """Сгенерировать тестовые документы со спиралями в альбомной ориентации"""
     try:
-        from medical_doc_processor.generators.spiral_document_generator import (
+        from .generators.spiral_document_generator import (
             SpiralDocumentGenerator
         )
         
@@ -175,12 +175,12 @@ def generate(output_dir: str, count: int, width: int, height: int,
                 probe_number=probe_number,
                 exercise=exercise
             )
-            click.echo(f"✅ Документ создан ({language}, {dpi} DPI): {output_path}")
+            click.echo(f"[OK] Документ создан ({language}, {dpi} DPI): {output_path}")
         else:
             pass
             
     except Exception as e:
-        click.echo(f"❌ Ошибка генерации: {e}")
+        click.echo(f"[ERROR] Ошибка генерации: {e}")
 
 if __name__ == '__main__':
     main()

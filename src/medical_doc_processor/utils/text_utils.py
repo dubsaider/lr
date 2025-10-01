@@ -87,16 +87,16 @@ class TextRenderer:
                 "en": "1. Use a blue pen."
             },
             "instruction_2": {
-                "ru": "2. Начните из центра и ведите по контуру, не отрываясь.",
-                "en": "2. Start from the center and follow the contour without lifting."
+                "ru": "2. Для каждого шаблона измерьте время в секундах.",
+                "en": "2. For each template, measure drawing time in seconds."
             },
             "instruction_3": {
-                "ru": "3. Сначала выполните шаблон Л, затем шаблон П.",
-                "en": "3. Complete the L template first, then the R template."
+                "ru": "3. Начните из центра и ведите по контуру, не отрываясь.",
+                "en": "3. Start from the center and follow the contour without lifting."
             },
             "instruction_4": {
-                "ru": "4. Для каждого шаблона измерьте время в секундах.",
-                "en": "4. For each template, measure drawing time in seconds."
+                "ru": "4. Сначала выполните шаблон Л, затем шаблон П.",
+                "en": "4. Complete the L template first, then the R template."
             },
             "instruction_5": {
                 "ru": "5. Запишите значения в поля \"Время Л\" и \"Время П\".",

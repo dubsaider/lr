@@ -66,14 +66,15 @@ class SpiralDocumentGenerator:
         # Динамически рассчитываем верхнюю границу и допустимый размер квадратов,
         # чтобы исключить пересечения с блоками времени и инструкциями
         base_scale = self.height / 1654.0
-        header_h = int(100 * base_scale)  # высота шапки
-        time_h = 110                      # высота блока времени из components
-        instructions_h = int(220 * base_scale)
-        bottom_reserved = time_h + 30 + instructions_h + self.margin
+        header_h = int(120 * base_scale)  # высота шапки с запасом
+        time_h = 50                      # высота блока времени (только текстовая строка)
+        instructions_h = int(220 * base_scale)  # высота инструкций
+        bottom_reserved = time_h + 50 + instructions_h + self.margin  # резерв снизу
         self._top_y = self.margin + header_h
         max_square_by_height = self.height - self._top_y - bottom_reserved
         max_square_by_width = int((self.width - 3 * self.margin) / 2)
         new_square = min(self.square_size, max_square_by_height, max_square_by_width)
+        
         # Обновляем размеры, если уменьшили
         if new_square <= 0:
             new_square = max_square_by_width
@@ -100,7 +101,7 @@ class SpiralDocumentGenerator:
             
             self.spiral_generator.draw_spiral(img, spiral_points)
         
-        # Блоки времени и нижняя граница
+        # Квадратики Л и П под спиралями и блок времени
         last_y = self.components.draw_time_fields_side_by_side(img, squares_layout, times)
         
         # Инструкции под блоками времени без наложения
