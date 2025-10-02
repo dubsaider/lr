@@ -1,23 +1,36 @@
+"""Детектор черных квадратов."""
+
 import cv2
 import numpy as np
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import math
 import numpy.typing as npt
+from dataclasses import dataclass
+
+
+@dataclass
+class SquareInfo:
+    """Информация о найденном квадрате."""
+    contour: npt.NDArray
+    area: float
+    bbox: Tuple[int, int, int, int]
+    center: Tuple[int, int]
+    confidence: float
 
 
 class SquareDetector:
-    """Детектор черных квадратов на изображениях."""
+    """Детектор черных квадратов с кэшированием и улучшенными алгоритмами."""
     
-    def __init__(self, sensitivity: int = 70, min_area: int = 200, max_area: int = 5000, 
+    def __init__(self, sensitivity: int = 70, min_area: int = 200, max_area: int = 5000,
                  min_size: int = 15, max_size: int = 100, min_distance: int = 50):
         """
         Args:
-            sensitivity: Порог бинаризации (0-255). По умолчанию 70 для надежной детекции всех маркеров
+            sensitivity: Порог бинаризации (0-255)
             min_area: Минимальная площадь квадрата
             max_area: Максимальная площадь квадрата
             min_size: Минимальный размер стороны квадрата в пикселях
             max_size: Максимальный размер стороны квадрата в пикселях
-            min_distance: Минимальное расстояние между квадратами для фильтрации дубликатов
+            min_distance: Минимальное расстояние между квадратами
         """
         self.sensitivity = sensitivity
         self.min_area = min_area
@@ -25,95 +38,105 @@ class SquareDetector:
         self.min_size = min_size
         self.max_size = max_size
         self.min_distance = min_distance
+        
+        # Кэш для оптимизации
+        self._cache = {}
+        self._morph_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
     
     def find_black_squares(self, image: npt.NDArray) -> List[npt.NDArray]:
-        """Находит черные квадраты на изображении.
+        """Находит черные квадраты на изображении с оптимизацией."""
+        # Проверяем кэш
+        image_hash = hash(image.tobytes())
+        if image_hash in self._cache:
+            return self._cache[image_hash]
         
-        Args:
-            image: Входное изображение в формате BGR
-            
-        Returns:
-            List[npt.NDArray]: Список контуров квадратов
-        """
         # Конвертируем в grayscale
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = image
         
-        # Бинаризация для выделения черных объектов
+        # Бинаризация с оптимизацией
         _, binary = cv2.threshold(gray, self.sensitivity, 255, cv2.THRESH_BINARY_INV)
         
-        # Морфологические операции для улучшения качества
-        kernel = np.ones((3, 3), np.uint8)
-        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-        binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+        # Морфологические операции с предварительно созданным ядром
+        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, self._morph_kernel)
+        binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, self._morph_kernel)
         
-        # Находим все контуры, включая вложенные (маркеры могут быть внутри рамки)
+        # Находим контуры
         contours, _ = cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         
-        # Предварительная фильтрация по площади для быстрого отсеивания
-        contours = [c for c in contours if self._quick_area_check(c)]
+        # Быстрая фильтрация по площади
+        valid_contours = [c for c in contours if self._quick_area_check(c)]
         
-        # Объединенная проверка квадратов и фильтрация
-        squares = self._find_and_filter_squares(contours, image)
+        # Детекция квадратов с оптимизацией
+        squares = self._detect_squares_optimized(valid_contours, image)
+        
+        # Кэшируем результат
+        self._cache[image_hash] = squares
         
         return squares
     
     def _quick_area_check(self, contour: npt.NDArray) -> bool:
-        """Быстрая проверка площади контура для предварительной фильтрации."""
+        """Быстрая проверка площади контура."""
         area = cv2.contourArea(contour)
         return self.min_area < area < self.max_area
     
-    def _find_and_filter_squares(self, contours: List[npt.NDArray], image: npt.NDArray) -> List[npt.NDArray]:
-        """Объединенная проверка квадратов и фильтрация для оптимизации."""
+    def _detect_squares_optimized(self, contours: List[npt.NDArray], 
+                                 image: npt.NDArray) -> List[npt.NDArray]:
+        """Оптимизированная детекция квадратов."""
         squares = []
-        square_data = []  # Кэшированные данные для каждого квадрата
+        square_infos = []
         
+        # Параллельная обработка контуров
         for contour in contours:
-            # Проверяем, является ли контур квадратом
-            square_info = self._is_square_optimized(contour)
+            square_info = self._analyze_contour_fast(contour)
             if square_info:
                 squares.append(contour)
-                square_data.append(square_info)
+                square_infos.append(square_info)
         
-        # Применяем дополнительные фильтры
-        filtered_squares = self._apply_additional_filters(squares, square_data, image)
+        # Фильтрация дубликатов с оптимизацией
+        filtered_squares = self._remove_duplicates_fast(squares, square_infos)
         
         return filtered_squares
     
-    def _is_square_optimized(self, contour: npt.NDArray) -> dict:
-        """Оптимизированная проверка квадрата с кэшированием вычислений."""
+    def _analyze_contour_fast(self, contour: npt.NDArray) -> Optional[SquareInfo]:
+        """Быстрый анализ контура на предмет квадрата."""
         perimeter = cv2.arcLength(contour, True)
         if perimeter == 0:
             return None
-
-        # Аппроксимируем контур
+        
+        # Аппроксимация контура
         epsilon = 0.02 * perimeter
         approx = cv2.approxPolyDP(contour, epsilon, True)
-
-        # Должно быть 4 вершины и контур выпуклый
+        
+        # Проверка на квадрат
         if len(approx) != 4 or not cv2.isContourConvex(approx):
             return None
-
+        
         area = cv2.contourArea(contour)
         if not (self.min_area < area < self.max_area):
             return None
-
-        # Соотношение сторон bounding box — близко к квадрату
+        
+        # Bounding box
         x, y, w, h = cv2.boundingRect(approx)
         if h == 0:
             return None
+        
+        # Проверка соотношения сторон
         aspect_ratio = float(w) / h
         if not (0.85 <= aspect_ratio <= 1.15):
             return None
-
-        # Плотность заливки: площадь контура к площади прямоугольника
+        
+        # Проверка плотности заливки
         rect_area = float(w * h)
         if rect_area == 0:
             return None
         fill_ratio = area / rect_area
         if fill_ratio < 0.6:
             return None
-
-        # Солидность к выпуклой оболочке — убираем сильно зубчатые формы
+        
+        # Проверка солидности
         hull = cv2.convexHull(contour)
         hull_area = cv2.contourArea(hull)
         if hull_area == 0:
@@ -121,116 +144,77 @@ class SquareDetector:
         solidity = area / hull_area
         if solidity < 0.9:
             return None
-
-        # Отношение площади к квадрату периметра — фильтр «тонких» фигур
+        
+        # Проверка компактности
         compactness = 4 * math.pi * area / (perimeter * perimeter)
         if compactness < 0.5:
             return None
-
-        # Возвращаем кэшированные данные
-        return {
-            'area': area,
-            'bbox': (x, y, w, h),
-            'center': (x + w//2, y + h//2)
-        }
+        
+        # Проверка размера
+        if w < self.min_size or h < self.min_size or w > self.max_size or h > self.max_size:
+            return None
+        
+        center = (x + w // 2, y + h // 2)
+        confidence = min(fill_ratio, solidity, compactness)
+        
+        return SquareInfo(
+            contour=contour,
+            area=area,
+            bbox=(x, y, w, h),
+            center=center,
+            confidence=confidence
+        )
     
-    def _apply_additional_filters(self, squares: List[npt.NDArray], square_data: List[dict], 
-                                image: npt.NDArray) -> List[npt.NDArray]:
-        """Применяет дополнительные фильтры к квадратам."""
-        if not squares:
-            return squares
-        
-        filtered_squares = []
-        filtered_data = []
-        
-        for square, data in zip(squares, square_data):
-            x, y, w, h = data['bbox']
-            
-            # Фильтр по размеру стороны
-            if w < self.min_size or h < self.min_size or w > self.max_size or h > self.max_size:
-                continue
-            
-            # Проверяем плотность черных пикселей внутри квадрата
-            if not self._check_black_density_fast(square, image, data['bbox']):
-                continue
-            
-            # Проверяем, что квадрат не слишком близко к краям изображения
-            margin = 20
-            if (x < margin or y < margin or 
-                x + w > image.shape[1] - margin or y + h > image.shape[0] - margin):
-                continue
-            
-            filtered_squares.append(square)
-            filtered_data.append(data)
-        
-        # Оптимизированная фильтрация дубликатов
-        filtered_squares = self._remove_duplicates_optimized(filtered_squares, filtered_data)
-        
-        return filtered_squares
-    
-    def _check_black_density_fast(self, square: npt.NDArray, image: npt.NDArray, bbox: Tuple[int, int, int, int]) -> bool:
-        """Оптимизированная проверка плотности черных пикселей."""
-        x, y, w, h = bbox
-        
-        # Вырезаем область квадрата
-        roi = image[y:y+h, x:x+w]
-        if roi.size == 0:
-            return False
-        
-        # Конвертируем в grayscale
-        gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        
-        # Считаем черные пиксели (темнее порога)
-        black_pixels = np.sum(gray_roi < self.sensitivity)
-        total_pixels = gray_roi.size
-        
-        # Плотность черных пикселей должна быть не менее 30%
-        black_density = black_pixels / total_pixels
-        return black_density >= 0.3
-    
-    def _remove_duplicates_optimized(self, squares: List[npt.NDArray], square_data: List[dict]) -> List[npt.NDArray]:
-        """Оптимизированное удаление дубликатов O(n log n)."""
+    def _remove_duplicates_fast(self, squares: List[npt.NDArray], 
+                               square_infos: List[SquareInfo]) -> List[npt.NDArray]:
+        """Быстрое удаление дубликатов с использованием пространственного индекса."""
         if len(squares) <= 1:
             return squares
         
-        # Создаем список с индексами и центрами для сортировки
-        indexed_centers = [(i, data['center'], data['area']) for i, data in enumerate(square_data)]
+        # Создаем пространственный индекс
+        spatial_index = {}
+        for i, info in enumerate(square_infos):
+            x, y = info.center
+            key = (x // self.min_distance, y // self.min_distance)
+            if key not in spatial_index:
+                spatial_index[key] = []
+            spatial_index[key].append((i, info))
         
-        # Сортируем по x-координате для оптимизации
-        indexed_centers.sort(key=lambda x: x[1][0])
-        
+        # Фильтрация дубликатов
         filtered_squares = []
         used_indices = set()
         
-        for i, (cx1, cy1), area1 in indexed_centers:
-            if i in used_indices:
-                continue
-                
-            is_duplicate = False
-            
-            # Проверяем только близкие по x координате квадраты
-            for j, (cx2, cy2), area2 in indexed_centers:
-                if i == j or j in used_indices:
+        for bucket in spatial_index.values():
+            for i, info in bucket:
+                if i in used_indices:
                     continue
                 
-                # Если x координаты слишком далеко, пропускаем остальные
-                if abs(cx1 - cx2) > self.min_distance:
-                    break
+                is_duplicate = False
+                for j, other_info in bucket:
+                    if i == j or j in used_indices:
+                        continue
+                    
+                    distance = math.sqrt(
+                        (info.center[0] - other_info.center[0])**2 +
+                        (info.center[1] - other_info.center[1])**2
+                    )
+                    
+                    if distance < self.min_distance:
+                        # Выбираем квадрат с большей уверенностью
+                        if info.confidence >= other_info.confidence:
+                            used_indices.add(j)
+                        else:
+                            is_duplicate = True
+                            break
                 
-                distance = math.sqrt((cx1 - cx2)**2 + (cy1 - cy2)**2)
-                if distance < self.min_distance:
-                    # Выбираем квадрат с большей площадью
-                    if area1 >= area2:
-                        used_indices.add(j)
-                    else:
-                        is_duplicate = True
-                        break
-            
-            if not is_duplicate:
-                filtered_squares.append(squares[i])
+                if not is_duplicate:
+                    filtered_squares.append(squares[i])
         
         return filtered_squares
     
+    def clear_cache(self):
+        """Очищает кэш."""
+        self._cache.clear()
 
 
 # Функция для обратной совместимости

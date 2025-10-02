@@ -7,11 +7,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 class TextRenderer:
     """Класс для работы с текстом и шрифтами с поддержкой мультиязычности"""
-    
+
     def __init__(self, language: str = "ru"):
         self.language = language
         self._setup_fonts()
-    
+
     def _setup_fonts(self):
         """Настройка шрифтов: ищем системный TTF с поддержкой кириллицы."""
         self.available_fonts = [cv2.FONT_HERSHEY_SIMPLEX]
@@ -42,11 +42,11 @@ class TextRenderer:
             if os.path.exists(path):
                 return path
         return ""
-    
+
     def set_language(self, language: str):
         """Установка языка"""
         self.language = language
-    
+
     def get_text(self, key: str) -> str:
         """Получение текста на выбранном языке"""
         translations = {
@@ -119,11 +119,11 @@ class TextRenderer:
                 "en": "Time R"
             }
         }
-        
+
         return translations.get(key, {}).get(self.language, key)
-    
-    def put_text(self, img: np.ndarray, text: str, position: Tuple[int, int], 
-                 font_scale: float = 1.0, color: Tuple[int, int, int] = (0, 0, 0), 
+
+    def put_text(self, img: np.ndarray, text: str, position: Tuple[int, int],
+                 font_scale: float = 1.0, color: Tuple[int, int, int] = (0, 0, 0),
                  thickness: int = 2):
         """Отрисовывает текст с поддержкой кириллицы через PIL, с fallback на OpenCV.
         position — левый нижний угол (как у cv2.putText).

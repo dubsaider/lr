@@ -10,7 +10,7 @@ from .utils.visualization import debug_lines
 
 __all__ = [
     'load_image',
-    'find_black_squares', 
+    'find_black_squares',
     'detect_orientation_by_lines',
     'process_medical_test',
     'debug_lines',
@@ -19,5 +19,5 @@ __all__ = [
 try:
     from .generators.spiral_document_generator import SpiralDocumentGenerator
     __all__.extend(['SpiralDocumentGenerator'])
-except ImportError as e:
+except ImportError:
     pass
